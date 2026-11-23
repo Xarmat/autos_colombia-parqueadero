@@ -8,6 +8,8 @@ from PySide6.QtWidgets import QDialog, QGridLayout, QLabel, QPushButton, QVBoxLa
 
 from models.entidades import Sesion
 from services.contenedor import Servicios
+from ui.celda_view import EstadoCeldasView
+from ui.cliente_view import ClientesVehiculosView
 from ui.comun import ejecutar, mostrar_info
 from ui.ingreso_view import IngresoView
 from ui.novedad_view import NovedadView
@@ -23,47 +25,62 @@ class PanelView(QDialog):
         self._servicios = servicios
 
         self.setWindowTitle("Autos Colombia - Panel")
-        self.setMinimumWidth(480)
+        self.setFixedWidth(440)
 
         # --- Encabezado: quién y desde dónde ---
         titulo = QLabel("Panel de operación")
         titulo.setObjectName("titulo")
-        quien = QLabel(f"Operario: {sesion.operario.nombre}   |   {sesion.puerta.nombre}")
+        quien = QLabel(f"Operario: {sesion.operario.nombre} | {sesion.puerta.nombre}")
+        quien.setObjectName("subtitulo")
 
         # --- Sección de ocupación (se rellena en _refrescar_ocupacion) ---
         self.lbl_motos = QLabel()
         self.lbl_vehiculos = QLabel()
         self.lbl_total = QLabel()
         self.lbl_mensaje = QLabel("")
+        self.lbl_mensaje.setWordWrap(True)
+        self.lbl_mensaje.setMinimumHeight(18)
 
-        # --- Sección de accesos ---
+        # --- Sección de acciones ---
         btn_ingreso = QPushButton("Registrar ingreso")
         btn_salida = QPushButton("Registrar salida")
         btn_novedad = QPushButton("Registrar novedad")
+        btn_celdas = QPushButton("Estado de celdas")
+        btn_clientes = QPushButton("Clientes y vehículos")
         btn_cerrar = QPushButton("Cerrar sesión")
-        for boton in (btn_ingreso, btn_salida, btn_novedad):
-            boton.setObjectName("grande")
+
+        for boton in (btn_ingreso, btn_salida, btn_novedad, btn_celdas, btn_clientes):
+            boton.setObjectName("accion_panel")
         btn_cerrar.setObjectName("secundario")
 
         acciones = QGridLayout()
+        acciones.setSpacing(10)
         acciones.addWidget(btn_ingreso, 0, 0)
         acciones.addWidget(btn_salida, 0, 1)
-        acciones.addWidget(btn_novedad, 1, 0, 1, 2)
+        acciones.addWidget(btn_novedad, 1, 0)
+        acciones.addWidget(btn_celdas, 1, 1)
+        acciones.addWidget(btn_clientes, 2, 0, 1, 2)
+        acciones.addWidget(btn_cerrar, 3, 0, 1, 2)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(8)
+
         layout.addWidget(titulo)
         layout.addWidget(quien)
+        layout.addSpacing(6)
         layout.addWidget(self.lbl_motos)
         layout.addWidget(self.lbl_vehiculos)
         layout.addWidget(self.lbl_total)
         layout.addWidget(self.lbl_mensaje)
         layout.addLayout(acciones)
-        layout.addWidget(btn_cerrar)
 
         # --- Eventos ---
         btn_ingreso.clicked.connect(self._abrir_ingreso)
         btn_salida.clicked.connect(self._abrir_salida)
         btn_novedad.clicked.connect(self._abrir_novedad)
+        btn_celdas.clicked.connect(self._abrir_estado_celdas)
+        btn_clientes.clicked.connect(self._abrir_clientes_vehiculos)
         btn_cerrar.clicked.connect(self.accept)  # "aceptado" = volver al login (ver main.py)
 
         # Actualización periódica de los contadores
@@ -77,10 +94,16 @@ class PanelView(QDialog):
         ok, o = ejecutar(self.lbl_mensaje, self._servicios.ocupacion.consultar_ocupacion)
         if not ok:
             return
+
+        texto_moto_ocupada = "ocupada" if o.motos_ocupadas == 1 else "ocupadas"
+        texto_veh_ocupado = "ocupado" if o.vehiculos_ocupados == 1 else "ocupados"
+
         self.lbl_motos.setText(
-            f"Motos: {o.motos_ocupadas} ocupadas, {o.motos_libres} libres")
+            f"Motos: {o.motos_ocupadas} {texto_moto_ocupada}, {o.motos_libres} libres"
+        )
         self.lbl_vehiculos.setText(
-            f"Vehículos: {o.vehiculos_ocupados} ocupados, {o.vehiculos_libres} libres")
+            f"Vehículos: {o.vehiculos_ocupados} {texto_veh_ocupado}, {o.vehiculos_libres} libres"
+        )
         self.lbl_total.setText(f"Dentro del parqueadero ahora: {o.total_dentro}")
         mostrar_info(self.lbl_mensaje, "")
 
@@ -95,3 +118,10 @@ class PanelView(QDialog):
 
     def _abrir_novedad(self) -> None:
         NovedadView(self._sesion, self._servicios.novedad, self).exec()
+
+    def _abrir_estado_celdas(self) -> None:
+        EstadoCeldasView(self._sesion, self._servicios.celda, self).exec()
+        self._refrescar_ocupacion()
+
+    def _abrir_clientes_vehiculos(self) -> None:
+        ClientesVehiculosView(self._servicios.cliente, self).exec()

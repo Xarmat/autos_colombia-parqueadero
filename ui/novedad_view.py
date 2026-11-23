@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (QComboBox, QDialog, QHBoxLayout, QLabel, QPlainTe
 
 from models.entidades import Sesion
 from services.novedad_service import NovedadService
-from ui.comun import ejecutar, mostrar_info, mostrar_ok
+from ui.comun import ejecutar, limitar_texto, mostrar_info, mostrar_ok
 
 
 class NovedadView(QDialog):
@@ -28,6 +28,7 @@ class NovedadView(QDialog):
         btn_actualizar.setObjectName("secundario")
         self.txt_descripcion = QPlainTextEdit()
         self.txt_descripcion.setPlaceholderText("Describe lo ocurrido (rayón, objeto olvidado...)")
+        limitar_texto(self.txt_descripcion, 250)
         self.lbl_mensaje = QLabel("")
         self.btn_guardar = QPushButton("Guardar novedad")
         btn_cerrar = QPushButton("Cerrar")

@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QDialog, QHBoxLayout, QLabel, QLineEdit, QPushBut
 
 from models.entidades import Sesion
 from services.ingreso_service import IngresoService
-from ui.comun import ejecutar, mostrar_info, mostrar_ok
+from ui.comun import ejecutar, limitar_campo, mostrar_info, mostrar_ok
 
 
 class IngresoView(QDialog):
@@ -28,7 +28,7 @@ class IngresoView(QDialog):
         titulo.setObjectName("titulo")
         self.txt_placa = QLineEdit()
         self.txt_placa.setPlaceholderText("Placa, por ejemplo ABC123")
-        self.txt_placa.setMaxLength(10)
+        limitar_campo(self.txt_placa, 6, tipo="placa")
         self.btn_verificar = QPushButton("Verificar")
         self.lbl_datos = QLabel("")      # propietario, tipo, marca y color
         self.lbl_celda = QLabel("")      # celda asignada tras confirmar

@@ -43,6 +43,50 @@ class SinCupo(ParqueaderoError):
         super().__init__(f"No hay celdas disponibles para {tipo}.")
 
 
+class ClienteYaExiste(ParqueaderoError):
+    def __init__(self, documento: str):
+        super().__init__(f"El documento {documento} ya está registrado.")
+
+
+class VehiculoYaExiste(ParqueaderoError):
+    def __init__(self, placa: str):
+        super().__init__(f"La placa {placa} ya está registrada.")
+
+
+class ClienteConVehiculoDentro(ParqueaderoError):
+    def __init__(self, placa: str = ""):
+        if placa:
+            super().__init__(
+                f"El vehículo {placa} está dentro del parqueadero. "
+                "Registra su salida antes de inhabilitar al cliente."
+            )
+        else:
+            super().__init__("No se puede inhabilitar al cliente porque tiene vehículos dentro del parqueadero.")
+
+
+class TipoVehiculoDentro(ParqueaderoError):
+    def __init__(self):
+        super().__init__(
+            "El vehículo está dentro del parqueadero, "
+            "sólo se puede modificar la marca y el color."
+        )
+
+
+class ClienteInhabilitado(ParqueaderoError):
+    def __init__(self):
+        super().__init__("Tu cuenta está inhabilitada. Habla con el operario.")
+
+
+class VehiculoDentro(ParqueaderoError):
+    def __init__(self, placa: str):
+        super().__init__(f"No se puede inhabilitar el vehículo {placa} porque está dentro del parqueadero.")
+
+
+class VehiculoInhabilitado(ParqueaderoError):
+    def __init__(self, placa: str):
+        super().__init__(f"El vehículo {placa} está inhabilitado, no puede ingresar.")
+
+
 class CeldaOcupada(ParqueaderoError):
     """Uso interno: otra puerta tomó la misma celda en el mismo instante.
 

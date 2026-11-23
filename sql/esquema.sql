@@ -60,3 +60,8 @@ CREATE TABLE IF NOT EXISTS novedad (
   descripcion   TEXT NOT NULL,
   fecha_hora    TIMESTAMP NOT NULL DEFAULT now()
 );
+
+-- Columnas de gestión de clientes y vehículos (Iteración 2)
+ALTER TABLE propietario ADD COLUMN IF NOT EXISTS clave_hash VARCHAR(255) DEFAULT '';
+ALTER TABLE propietario ADD COLUMN IF NOT EXISTS habilitado BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE vehiculo ADD COLUMN IF NOT EXISTS habilitado BOOLEAN NOT NULL DEFAULT true;

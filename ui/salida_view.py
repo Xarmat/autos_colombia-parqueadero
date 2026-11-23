@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QDialog, QHBoxLayout, QLabel, QLineEdit, QPushBut
 
 from models.entidades import Sesion
 from services.salida_service import SalidaService
-from ui.comun import ejecutar, mostrar_info, mostrar_ok
+from ui.comun import ejecutar, limitar_campo, mostrar_info, mostrar_ok
 
 
 class SalidaView(QDialog):
@@ -26,7 +26,7 @@ class SalidaView(QDialog):
         titulo.setObjectName("titulo")
         self.txt_placa = QLineEdit()
         self.txt_placa.setPlaceholderText("Placa, por ejemplo ABC123")
-        self.txt_placa.setMaxLength(10)
+        limitar_campo(self.txt_placa, 6, tipo="placa")
         self.btn_buscar = QPushButton("Buscar")
         self.lbl_datos = QLabel("")
         self.lbl_mensaje = QLabel("")

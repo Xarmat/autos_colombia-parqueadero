@@ -55,11 +55,14 @@ def main() -> None:
                 "VALUES (%s, %s, %s, %s) ON CONFLICT (usuario) DO NOTHING",
                 [(n, u, generar_hash("1234"), t) for n, u, t in OPERARIOS])
 
-            # 5. Propietarios y vehículos de ejemplo
+            # 5. Propietarios y vehículos de ejemplo (clave inicial: 123456)
             cur.executemany(
-                "INSERT INTO propietario (nombre, documento, telefono) "
-                "VALUES (%s, %s, %s) ON CONFLICT (documento) DO NOTHING",
-                PROPIETARIOS)
+                "INSERT INTO propietario (nombre, documento, telefono, clave_hash, habilitado) "
+                "VALUES (%s, %s, %s, %s, true) "
+                "ON CONFLICT (documento) DO UPDATE SET clave_hash = EXCLUDED.clave_hash "
+                "WHERE propietario.clave_hash IS NULL OR propietario.clave_hash = ''",
+                [(n, d, t, generar_hash("123456")) for n, d, t in PROPIETARIOS],
+            )
             cur.executemany(
                 "INSERT INTO vehiculo (placa, tipo, marca, color, id_propietario) "
                 "SELECT %s, %s, %s, %s, id_propietario FROM propietario WHERE documento = %s "

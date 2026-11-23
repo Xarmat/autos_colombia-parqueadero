@@ -6,8 +6,10 @@ Defensa en dos niveles contra celdas duplicadas:
   2. Los índices únicos de la base rechazan cualquier duplicado que aun así se cuele;
      en ese caso se reintenta con otra celda.
 """
-from excepciones.errores import (CeldaOcupada, ParqueaderoError, SinCupo,
-                                 VehiculoNoRegistrado, VehiculoYaDentro)
+from excepciones.errores import (CeldaOcupada, ClienteInhabilitado,
+                                 ParqueaderoError, SinCupo,
+                                 VehiculoInhabilitado, VehiculoNoRegistrado,
+                                 VehiculoYaDentro)
 from database.conexion import transaccion
 from models.entidades import Movimiento, Sesion, Vehiculo
 from repositories.celda_repository import CeldaRepository
@@ -25,6 +27,14 @@ class IngresoService:
         self._celdas = celdas
         self._movimientos = movimientos
 
+    @staticmethod
+    def _validar_habilitado(vehiculo: Vehiculo) -> None:
+        """Impide ingresar vehículos inhabilitados o asociados a clientes inhabilitados."""
+        if not vehiculo.habilitado:
+            raise VehiculoInhabilitado(vehiculo.placa)
+        if vehiculo.propietario is not None and not vehiculo.propietario.habilitado:
+            raise ClienteInhabilitado()
+
     def verificar_ingreso(self, placa: str) -> Vehiculo:
         """Paso 1 en pantalla: comprueba que el vehículo puede entrar, sin reservar nada.
 
@@ -36,6 +46,7 @@ class IngresoService:
             vehiculo = self._vehiculos.buscar_por_placa(conn, placa)
             if vehiculo is None:
                 raise VehiculoNoRegistrado(placa)
+            self._validar_habilitado(vehiculo)
             if self._movimientos.buscar_activo(conn, placa) is not None:
                 raise VehiculoYaDentro(placa)
             if self._celdas.contar_libres(conn, vehiculo.tipo) == 0:
@@ -55,6 +66,7 @@ class IngresoService:
                     vehiculo = self._vehiculos.buscar_por_placa(conn, placa)
                     if vehiculo is None:
                         raise VehiculoNoRegistrado(placa)
+                    self._validar_habilitado(vehiculo)
                     if self._movimientos.buscar_activo(conn, placa) is not None:
                         raise VehiculoYaDentro(placa)
 

@@ -16,6 +16,8 @@ class Propietario:
     nombre: str
     documento: str
     telefono: Optional[str] = None
+    habilitado: bool = True
+    clave_hash: Optional[str] = None
 
 
 @dataclass
@@ -26,6 +28,7 @@ class Vehiculo:
     color: str
     id_propietario: int
     propietario: Optional[Propietario] = None  # se llena cuando la consulta lo trae
+    habilitado: bool = True
 
 
 @dataclass
