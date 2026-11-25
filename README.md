@@ -66,14 +66,3 @@ El cliente ve un aviso rojo cuando tiene pagos pendientes. Siete días antes del
 
 El inicializador prepara pagos de ejemplo: una mensualidad próxima, una vigente y dos vehículos en mora para probar el aviso y el bloqueo.
 
-## Entregables de la iteración 3
-
-La actividad y el contexto actualizado están en [`docs-iteracion-3/iteracion_3_EA3(Actividad).md`](docs-iteracion-3/iteracion_3_EA3%28Actividad%29.md) y [`docs-iteracion-3/Proyecto_parqueadero_contexto.md`](docs-iteracion-3/Proyecto_parqueadero_contexto.md). El diagrama de componentes que reúne las tres iteraciones está en [`docs-iteracion-3/diagrama_componentes_it1_it2_it3.html`](docs-iteracion-3/diagrama_componentes_it1_it2_it3.html). El plan de pruebas resumido en Excel (inciso 7) queda pendiente.
-
-## Prueba de concurrencia
-
-```bash
-python -m scripts.prueba_concurrencia
-```
-
-La prueba verifica que dos operarios no puedan asignar la misma celda y que se respete la capacidad del parqueadero.
