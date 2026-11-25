@@ -1,0 +1,22 @@
+@startsalt
+skinparam backgroundColor #111827
+skinparam defaultFontColor #F9FAFB
+skinparam shadowing false
+{
+{^ <b>Autos Colombia - Estado de pagos</b>}
+==
+<back:#7F1D1D><color:#FFFFFF><b>Pago pendiente para este vehículo</b></color></back>
+Vehículo | ABC123 - Automóvil
+Mensualidad vencida | 05/10/2026 - 04/11/2026
+Días de gracia transcurridos | 15 de 15
+Estado de ingreso | <back:#7F1D1D><color:#FFFFFF>Bloqueado hasta registrar el pago</color></back>
+==
+<b>Para reanudar el servicio</b>
+Prorrateo de gracia | Tarifa mensual / días reales del ciclo x días cobrables
+Si continúas | Se agrega la siguiente mensualidad completa por adelantado
+Pago | Debes realizarlo con el operario; no se cobra desde este portal.
+==
+Si no deseas continuar, puedes solicitar la baja. El administrador gestionará la solicitud.
+[ Entendido ] | [ Solicitar baja ]
+}
+@endsalt

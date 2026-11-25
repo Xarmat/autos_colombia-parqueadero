@@ -1,0 +1,17 @@
+@startsalt
+skinparam backgroundColor #111827
+skinparam defaultFontColor #F9FAFB
+skinparam shadowing false
+{
+{^ <b>Autos Colombia - Aviso de pago</b>}
+==
+<back:#7F1D1D><color:#FFFFFF><b>No se puede registrar el ingreso</b></color></back>
+Vehículo | ABC123 - Automóvil
+Estado | Bloqueado por mora de 15 días
+Saldo a regularizar | Prorrateo de gracia: $[valor calculado]
+Si continúa | Siguiente mensualidad completa por adelantado
+==
+El pago debe registrarlo el operario. Si el vehículo ya está dentro, este aviso no impide registrar su salida.
+[ Entendido ]
+}
+@endsalt

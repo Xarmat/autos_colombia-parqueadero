@@ -3,10 +3,11 @@
 Son datos puros: no saben nada de PostgreSQL ni de la interfaz.
 """
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
-from models.enums import TipoVehiculo, Turno
+from models.enums import (ConceptoPago, MedioPago, TipoSolicitudCliente,
+                          TipoVehiculo, Turno)
 from models.seguridad import comprobar_clave
 
 
@@ -18,6 +19,7 @@ class Propietario:
     telefono: Optional[str] = None
     habilitado: bool = True
     clave_hash: Optional[str] = None
+    fecha_nuevo_registro: Optional[datetime] = None
 
 
 @dataclass
@@ -29,6 +31,56 @@ class Vehiculo:
     id_propietario: int
     propietario: Optional[Propietario] = None  # se llena cuando la consulta lo trae
     habilitado: bool = True
+    estado_pago: Optional["EstadoPagoVehiculo"] = None
+
+
+@dataclass
+class DetallePago:
+    concepto: ConceptoPago
+    fecha_inicio: date
+    fecha_fin: date
+    valor: int
+
+
+@dataclass
+class EstadoPagoVehiculo:
+    placa: str
+    estado: str
+    tarifa_mensual: int
+    fecha_inicio: Optional[date] = None
+    fecha_vencimiento: Optional[date] = None
+    fecha_cubierta_hasta: Optional[date] = None
+    dias_mora: int = 0
+    bloqueado_ingreso: bool = True
+    siguiente_inicio: Optional[date] = None
+    siguiente_fin: Optional[date] = None
+    decision_renovacion: Optional[str] = None
+    renovacion_disponible: bool = False
+
+
+@dataclass
+class ComprobantePago:
+    id_pago: int
+    placa: str
+    nombre_cliente: str
+    tipo_vehiculo: TipoVehiculo
+    fecha_pago: datetime
+    medio_pago: MedioPago
+    usuario_operario: str
+    valor_total: int
+    detalles: list[DetallePago]
+
+
+@dataclass
+class SolicitudCliente:
+    id_solicitud: int
+    id_propietario: int
+    nombre_cliente: str
+    documento: str
+    placa: Optional[str]
+    tipo: TipoSolicitudCliente
+    estado: str
+    fecha_solicitud: datetime
 
 
 @dataclass
@@ -36,6 +88,8 @@ class Celda:
     id_celda: int
     codigo: str
     tipo: TipoVehiculo
+    habilitada: bool = True
+    motivo_bloqueo: Optional[str] = None
 
 
 @dataclass
@@ -51,6 +105,7 @@ class Operario:
     usuario: str
     clave_hash: str
     turno: Turno
+    habilitado: bool = True
 
     def verificar_clave(self, clave: str) -> bool:
         """True si la clave escrita corresponde al hash guardado."""
@@ -103,3 +158,36 @@ class Sesion:
     """Quién está trabajando y desde qué puerta; se crea al iniciar sesión."""
     operario: Operario
     puerta: Puerta
+
+
+@dataclass
+class Administrador:
+    id_administrador: int
+    nombre: str
+    usuario: str
+    clave_hash: str
+    habilitado: bool = True
+
+    def verificar_clave(self, clave: str) -> bool:
+        return comprobar_clave(clave, self.clave_hash)
+
+
+@dataclass
+class SesionAdministrador:
+    administrador: Administrador
+
+
+@dataclass
+class SolicitudCambio:
+    id_solicitud: int
+    id_operario: int
+    id_movimiento: Optional[int]
+    placa_reportada: Optional[str]
+    tipo: str
+    descripcion: str
+    estado: str
+    respuesta: Optional[str]
+    placa_corregida: Optional[str]
+    fecha_solicitud: datetime
+    nombre_operario: str = ""
+    usuario_operario: str = ""

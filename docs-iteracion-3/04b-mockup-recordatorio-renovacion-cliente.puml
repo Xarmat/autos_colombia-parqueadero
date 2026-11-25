@@ -1,0 +1,25 @@
+@startsalt
+skinparam backgroundColor #111827
+skinparam defaultFontColor #F9FAFB
+skinparam shadowing false
+{
+{^ <b>Autos Colombia - Renovación de mensualidad</b>}
+==
+<b>Tu mensualidad está por vencer</b>
+Vehículo | ABC123 - Automóvil
+Vigente hasta | 04/12/2026
+Aviso | <back:#854D0E><color:#FFFFFF>Faltan 7 días para el vencimiento</color></back>
+==
+<b>Próximo periodo</b>
+Mensualidad | 05/12/2026 - 04/01/2027
+Valor | $[tarifa mensual del vehículo]
+Cobro automático | No. El operario registra el pago cuando lo realices.
+==
+¿Qué deseas hacer?
+() Deseo continuar con este vehículo
+() Solicitar la baja al terminar el periodo vigente
+La solicitud de baja se envía al administrador para su gestión.
+==
+[ Guardar mi decisión ] | [ Más tarde ]
+}
+@endsalt

@@ -1,15 +1,10 @@
-"""Ventana de inicio de sesión.
-
-Flujo: el operario escribe usuario y clave, elige la puerta desde la que trabaja
-y pulsa Entrar. Si las credenciales son válidas se cierra con éxito y deja la
-Sesion (operario + puerta) disponible en `self.sesion`.
-"""
+"""Inicio de sesión diferenciado para administrador, operario y cliente."""
 from typing import Optional
 
 from PySide6.QtWidgets import (QComboBox, QDialog, QHBoxLayout, QLabel, QLineEdit,
                                QPushButton, QVBoxLayout)
 
-from models.entidades import Propietario, Sesion
+from models.entidades import Administrador, Propietario, Sesion
 from services.auth_service import AuthService
 from services.cliente_service import ClienteService
 from ui.comun import ejecutar, limitar_campo, mostrar_error
@@ -22,6 +17,7 @@ class LoginView(QDialog):
         self._cliente_servicio = cliente_servicio
         self.sesion: Optional[Sesion] = None
         self.cliente: Optional[Propietario] = None
+        self.administrador: Optional[Administrador] = None
         self.rol_autenticado: str = "operario"
         self._rol_actual = "operario"
 
@@ -39,22 +35,25 @@ class LoginView(QDialog):
         self.btn_operario.setObjectName("segmento_activo")
         self.btn_cliente = QPushButton("Cliente")
         self.btn_cliente.setObjectName("segmento_inactivo")
+        self.btn_administrador = QPushButton("Administrador")
+        self.btn_administrador.setObjectName("segmento_inactivo")
 
         fila_roles = QHBoxLayout()
         fila_roles.setSpacing(10)
         fila_roles.addWidget(self.btn_operario)
         fila_roles.addWidget(self.btn_cliente)
+        fila_roles.addWidget(self.btn_administrador)
 
-        self.lbl_usuario = QLabel("Usuario o documento")
+        self.lbl_usuario = QLabel("Usuario")
         self.lbl_usuario.setObjectName("campo_label")
         self.txt_usuario = QLineEdit()
-        limitar_campo(self.txt_usuario, 20, tipo="alfanumerico")
+        limitar_campo(self.txt_usuario, 14, tipo="alfanumerico")
 
         lbl_clave = QLabel("Contraseña")
         lbl_clave.setObjectName("campo_label")
         self.txt_clave = QLineEdit()
         self.txt_clave.setEchoMode(QLineEdit.EchoMode.Password)
-        limitar_campo(self.txt_clave, 20)
+        limitar_campo(self.txt_clave, 10)
 
         self.lbl_puerta = QLabel("Puerta (solo operarios)")
         self.lbl_puerta.setObjectName("campo_label")
@@ -97,6 +96,7 @@ class LoginView(QDialog):
         # --- Eventos ---
         self.btn_operario.clicked.connect(lambda: self._seleccionar_rol("operario"))
         self.btn_cliente.clicked.connect(lambda: self._seleccionar_rol("cliente"))
+        self.btn_administrador.clicked.connect(lambda: self._seleccionar_rol("administrador"))
         self.btn_entrar.clicked.connect(self._entrar)
         self.txt_usuario.returnPressed.connect(self._entrar)
         self.txt_clave.returnPressed.connect(self._entrar)
@@ -104,25 +104,26 @@ class LoginView(QDialog):
         self._cargar_puertas()
 
     def _seleccionar_rol(self, rol: str) -> None:
-        """Alterna el rol activo entre operario y cliente."""
+        """Alterna el rol de acceso y adapta los campos visibles."""
         self._rol_actual = rol
-        if rol == "operario":
-            self.btn_operario.setObjectName("segmento_activo")
-            self.btn_cliente.setObjectName("segmento_inactivo")
-            self.cmb_puerta.setEnabled(True)
-            self.lbl_puerta.setStyleSheet("")
-            self.lbl_usuario.setText("Usuario o documento")
-            limitar_campo(self.txt_usuario, 20, tipo="alfanumerico")
-        else:
-            self.btn_operario.setObjectName("segmento_inactivo")
-            self.btn_cliente.setObjectName("segmento_activo")
-            self.cmb_puerta.setEnabled(False)
-            self.lbl_puerta.setStyleSheet("color: #666666;")
-            self.lbl_usuario.setText("Documento")
+        for boton in (self.btn_operario, self.btn_cliente, self.btn_administrador):
+            boton.setObjectName(
+                "segmento_activo" if boton.text().lower() == rol else "segmento_inactivo"
+            )
+        es_operario = rol == "operario"
+        es_cliente = rol == "cliente"
+        self.cmb_puerta.setEnabled(es_operario)
+        self.lbl_puerta.setStyleSheet("" if es_operario else "color: #666666;")
+        self.lbl_usuario.setText(
+            "Documento" if es_cliente else "Usuario"
+        )
+        if es_cliente:
             limitar_campo(self.txt_usuario, 10, tipo="digitos")
+        else:
+            limitar_campo(self.txt_usuario, 14, tipo="alfanumerico")
 
         # Refrescar hojas de estilo en los botones de selección
-        for btn in (self.btn_operario, self.btn_cliente):
+        for btn in (self.btn_operario, self.btn_cliente, self.btn_administrador):
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 
@@ -139,7 +140,6 @@ class LoginView(QDialog):
             if self._cliente_servicio is None:
                 mostrar_error(self.lbl_mensaje, "Servicio de clientes no disponible.")
                 return
-
             ok, cliente = ejecutar(
                 self.lbl_mensaje,
                 lambda: self._cliente_servicio.autenticar_cliente(
@@ -149,6 +149,22 @@ class LoginView(QDialog):
             if ok:
                 self.cliente = cliente
                 self.rol_autenticado = "cliente"
+                self.accept()
+            else:
+                self.txt_clave.clear()
+                self.txt_clave.setFocus()
+            return
+
+        if self._rol_actual == "administrador":
+            ok, administrador = ejecutar(
+                self.lbl_mensaje,
+                lambda: self._auth.iniciar_sesion_administrador(
+                    self.txt_usuario.text(), self.txt_clave.text()
+                ),
+            )
+            if ok:
+                self.administrador = administrador
+                self.rol_autenticado = "administrador"
                 self.accept()
             else:
                 self.txt_clave.clear()

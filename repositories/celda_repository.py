@@ -20,9 +20,12 @@ class CeldaRepository:
         """
         fila = conn.execute(
             "SELECT c.id_celda, c.codigo, c.tipo FROM celda c "
-            "WHERE c.tipo = %s AND NOT EXISTS ("
+            "WHERE c.tipo = %s AND c.habilitada "
+            "AND NOT EXISTS ("
             "    SELECT 1 FROM movimiento m "
             "    WHERE m.id_celda = c.id_celda AND m.fecha_salida IS NULL) "
+            "AND NOT EXISTS (SELECT 1 FROM correccion_celda cc "
+            "    WHERE cc.id_celda_anterior=c.id_celda AND cc.estado='PENDIENTE') "
             "ORDER BY c.codigo LIMIT 1 "
             "FOR UPDATE OF c SKIP LOCKED",
             (tipo.value,),
@@ -35,9 +38,11 @@ class CeldaRepository:
         """Cantidad de celdas libres de un tipo (para avisar si no hay cupo)."""
         fila = conn.execute(
             "SELECT COUNT(*) AS libres FROM celda c "
-            "WHERE c.tipo = %s AND NOT EXISTS ("
+            "WHERE c.tipo = %s AND c.habilitada AND NOT EXISTS ("
             "    SELECT 1 FROM movimiento m "
-            "    WHERE m.id_celda = c.id_celda AND m.fecha_salida IS NULL)",
+            "    WHERE m.id_celda = c.id_celda AND m.fecha_salida IS NULL) "
+            "AND NOT EXISTS (SELECT 1 FROM correccion_celda cc "
+            "    WHERE cc.id_celda_anterior=c.id_celda AND cc.estado='PENDIENTE')",
             (tipo.value,),
         ).fetchone()
         return fila["libres"]
@@ -45,17 +50,22 @@ class CeldaRepository:
     def contar_por_estado(self, conn) -> Ocupacion:
         """Celdas libres y ocupadas por tipo, en una sola consulta."""
         filas = conn.execute(
-            "SELECT c.tipo, COUNT(*) AS total, COUNT(m.id_movimiento) AS ocupadas "
+            "SELECT c.tipo, "
+            "COUNT(*) FILTER (WHERE c.habilitada AND m.id_movimiento IS NULL "
+            "  AND cc.id_correccion IS NULL) AS libres, "
+            "COUNT(DISTINCT m.id_movimiento) AS ocupadas "
             "FROM celda c LEFT JOIN movimiento m "
             "  ON m.id_celda = c.id_celda AND m.fecha_salida IS NULL "
+            "LEFT JOIN correccion_celda cc "
+            "  ON cc.id_celda_anterior=c.id_celda AND cc.estado='PENDIENTE' "
             "GROUP BY c.tipo"
         ).fetchall()
-        datos = {f["tipo"]: (f["total"], f["ocupadas"]) for f in filas}
-        motos_total, motos_ocup = datos.get(TipoVehiculo.MOTO.value, (0, 0))
-        veh_total, veh_ocup = datos.get(TipoVehiculo.VEHICULO.value, (0, 0))
+        datos = {f["tipo"]: (f["libres"], f["ocupadas"]) for f in filas}
+        motos_libres, motos_ocup = datos.get(TipoVehiculo.MOTO.value, (0, 0))
+        veh_libres, veh_ocup = datos.get(TipoVehiculo.VEHICULO.value, (0, 0))
         return Ocupacion(
-            motos_libres=motos_total - motos_ocup,
+            motos_libres=motos_libres,
             motos_ocupadas=motos_ocup,
-            vehiculos_libres=veh_total - veh_ocup,
+            vehiculos_libres=veh_libres,
             vehiculos_ocupados=veh_ocup,
         )

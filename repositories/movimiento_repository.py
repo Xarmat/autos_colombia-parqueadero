@@ -70,6 +70,12 @@ class MovimientoRepository:
             "WHERE id_movimiento = %s AND fecha_salida IS NULL RETURNING *",
             (id_puerta, id_operario, id_movimiento),
         ).fetchone()
+        if fila is not None:
+            conn.execute(
+                "UPDATE correccion_celda SET estado='COMPLETADA', fecha_completada=now() "
+                "WHERE id_movimiento=%s AND estado='PENDIENTE'",
+                (id_movimiento,),
+            )
         return _a_movimiento(fila) if fila else None
 
     def listar_activos(self, conn) -> List[Movimiento]:

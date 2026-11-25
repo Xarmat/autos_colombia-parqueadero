@@ -16,7 +16,9 @@ class ClienteRepository:
         conn.execute(
             "ALTER TABLE propietario ADD COLUMN IF NOT EXISTS clave_hash VARCHAR(255) DEFAULT '';"
             "ALTER TABLE propietario ADD COLUMN IF NOT EXISTS habilitado BOOLEAN NOT NULL DEFAULT true;"
+            "ALTER TABLE propietario ADD COLUMN IF NOT EXISTS fecha_nuevo_registro TIMESTAMP NOT NULL DEFAULT now();"
             "ALTER TABLE vehiculo ADD COLUMN IF NOT EXISTS habilitado BOOLEAN NOT NULL DEFAULT true;"
+            "ALTER TABLE vehiculo ADD COLUMN IF NOT EXISTS fecha_habilitacion TIMESTAMP NOT NULL DEFAULT now();"
         )
 
     def buscar_clientes(self, conn, termino: str = "") -> List[Propietario]:
@@ -28,14 +30,15 @@ class ClienteRepository:
         termino = (termino or "").strip()
         if not termino:
             query = (
-                "SELECT id_propietario, nombre, documento, telefono, habilitado, clave_hash "
+                "SELECT id_propietario, nombre, documento, telefono, habilitado, clave_hash, fecha_nuevo_registro "
                 "FROM propietario ORDER BY nombre ASC"
             )
             filas = conn.execute(query).fetchall()
         else:
             patron = f"%{termino}%"
             query = """
-                SELECT DISTINCT p.id_propietario, p.nombre, p.documento, p.telefono, p.habilitado, p.clave_hash
+                SELECT DISTINCT p.id_propietario, p.nombre, p.documento, p.telefono,
+                       p.habilitado, p.clave_hash, p.fecha_nuevo_registro
                 FROM propietario p
                 LEFT JOIN vehiculo v ON v.id_propietario = p.id_propietario
                 WHERE p.documento ILIKE %s
@@ -53,6 +56,7 @@ class ClienteRepository:
                 telefono=f["telefono"],
                 habilitado=bool(f.get("habilitado", True)),
                 clave_hash=f.get("clave_hash", ""),
+                fecha_nuevo_registro=f.get("fecha_nuevo_registro"),
             )
             for f in filas
         ]
@@ -61,7 +65,7 @@ class ClienteRepository:
         """Busca un cliente por su documento exacto."""
         self.asegurar_esquema(conn)
         fila = conn.execute(
-            "SELECT id_propietario, nombre, documento, telefono, habilitado, clave_hash "
+            "SELECT id_propietario, nombre, documento, telefono, habilitado, clave_hash, fecha_nuevo_registro "
             "FROM propietario WHERE documento = %s",
             (documento,),
         ).fetchone()
@@ -74,13 +78,14 @@ class ClienteRepository:
             telefono=fila["telefono"],
             habilitado=bool(fila.get("habilitado", True)),
             clave_hash=fila.get("clave_hash", ""),
+            fecha_nuevo_registro=fila.get("fecha_nuevo_registro"),
         )
 
     def buscar_por_id(self, conn, id_propietario: int) -> Optional[Propietario]:
         """Busca un cliente por su id."""
         self.asegurar_esquema(conn)
         fila = conn.execute(
-            "SELECT id_propietario, nombre, documento, telefono, habilitado, clave_hash "
+            "SELECT id_propietario, nombre, documento, telefono, habilitado, clave_hash, fecha_nuevo_registro "
             "FROM propietario WHERE id_propietario = %s",
             (id_propietario,),
         ).fetchone()
@@ -93,6 +98,7 @@ class ClienteRepository:
             telefono=fila["telefono"],
             habilitado=bool(fila.get("habilitado", True)),
             clave_hash=fila.get("clave_hash", ""),
+            fecha_nuevo_registro=fila.get("fecha_nuevo_registro"),
         )
 
     def listar_vehiculos_cliente(self, conn, id_propietario: int) -> List[Vehiculo]:
@@ -123,7 +129,7 @@ class ClienteRepository:
         fila = conn.execute(
             "INSERT INTO propietario (nombre, documento, telefono, clave_hash, habilitado) "
             "VALUES (%s, %s, %s, %s, true) "
-            "RETURNING id_propietario, nombre, documento, telefono, habilitado, clave_hash",
+            "RETURNING id_propietario, nombre, documento, telefono, habilitado, clave_hash, fecha_nuevo_registro",
             (nombre, documento, telefono, clave_hash),
         ).fetchone()
         return Propietario(
@@ -133,6 +139,7 @@ class ClienteRepository:
             telefono=fila["telefono"],
             habilitado=fila["habilitado"],
             clave_hash=fila["clave_hash"],
+            fecha_nuevo_registro=fila["fecha_nuevo_registro"],
         )
 
     def actualizar_cliente(
@@ -149,13 +156,21 @@ class ClienteRepository:
         """Cambia el estado del cliente y sincroniza el estado de todos sus vehículos."""
         self.asegurar_esquema(conn)
         conn.execute(
-            "UPDATE propietario SET habilitado = %s WHERE id_propietario = %s",
-            (habilitado, id_propietario),
+            "UPDATE propietario SET habilitado = %s, "
+            "fecha_nuevo_registro = CASE WHEN %s THEN CURRENT_TIMESTAMP "
+            "ELSE fecha_nuevo_registro END WHERE id_propietario = %s",
+            (habilitado, habilitado, id_propietario),
         )
         conn.execute(
-            "UPDATE vehiculo SET habilitado = %s WHERE id_propietario = %s",
-            (habilitado, id_propietario),
+            "UPDATE vehiculo SET habilitado = %s, "
+            "fecha_habilitacion = CASE WHEN %s THEN CURRENT_TIMESTAMP "
+            "ELSE fecha_habilitacion END WHERE id_propietario = %s",
+            (habilitado, habilitado, id_propietario),
         )
+
+    def reactivar_cliente(self, conn, id_propietario: int) -> None:
+        """Reactiva el usuario y sus vehículos sin reemplazar sus datos anteriores."""
+        self.cambiar_estado_cliente(conn, id_propietario, True)
 
     def cambiar_clave_cliente(self, conn, id_propietario: int, clave_hash: str) -> None:
         """Actualiza la contraseña del cliente."""
@@ -217,8 +232,10 @@ class ClienteRepository:
         """Cambia el estado de habilitación de un vehículo."""
         self.asegurar_esquema(conn)
         conn.execute(
-            "UPDATE vehiculo SET habilitado = %s WHERE placa = %s",
-            (habilitado, placa),
+            "UPDATE vehiculo SET habilitado = %s, "
+            "fecha_habilitacion = CASE WHEN %s THEN CURRENT_TIMESTAMP "
+            "ELSE fecha_habilitacion END WHERE placa = %s",
+            (habilitado, habilitado, placa),
         )
 
     def cliente_tiene_vehiculos_dentro(self, conn, id_propietario: int) -> bool:

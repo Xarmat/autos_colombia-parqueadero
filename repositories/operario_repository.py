@@ -10,7 +10,7 @@ class OperarioRepository:
         """Devuelve el operario con ese nombre de usuario, o None si no existe."""
         fila = conn.execute(
             "SELECT id_operario, nombre, usuario, clave_hash, turno "
-            "FROM operario WHERE usuario = %s",
+            "FROM operario WHERE usuario = %s AND habilitado",
             (usuario,),
         ).fetchone()
         if fila is None:

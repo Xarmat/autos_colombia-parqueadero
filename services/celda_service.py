@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from database.conexion import transaccion
 from excepciones.errores import DatosInvalidos
-from models.entidades import Celda, Sesion
+from models.entidades import Celda
 from models.enums import TipoVehiculo
 from repositories.celda_estado_repository import CeldaConEstado, CeldaEstadoRepository
 
@@ -42,9 +42,9 @@ class CeldaService:
         id_movimiento: int,
         id_celda_destino: int,
         motivo: str,
-        sesion: Sesion,
+        id_administrador: int,
     ) -> None:
-        """Mueve el vehículo a la celda destino y lo registra como novedad."""
+        """Asigna la celda destino y reserva la anterior hasta completar el traslado."""
         motivo = (motivo or "").strip()
         if not motivo:
             raise DatosInvalidos("Escribe el motivo de la corrección.")
@@ -54,6 +54,17 @@ class CeldaService:
                 conn,
                 id_movimiento=id_movimiento,
                 id_celda_destino=id_celda_destino,
-                id_operario=sesion.operario.id_operario,
+                id_administrador=id_administrador,
                 motivo=motivo,
             )
+
+    def cambiar_estado_celda(self, id_celda: int, habilitada: bool, motivo: str = "") -> None:
+        motivo = (motivo or "").strip()
+        if not habilitada and not motivo:
+            raise DatosInvalidos("Escribe el motivo para bloquear la celda.")
+        with transaccion() as conn:
+            self._repo.cambiar_estado(conn, id_celda, habilitada, motivo or None)
+
+    def finalizar_traslado(self, id_correccion: int) -> None:
+        with transaccion() as conn:
+            self._repo.finalizar_correccion(conn, id_correccion)

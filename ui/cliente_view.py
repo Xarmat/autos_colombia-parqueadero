@@ -31,7 +31,7 @@ class NuevoClienteView(QDialog):
         lbl_nombre = QLabel("Nombre")
         lbl_nombre.setObjectName("campo_label")
         self.txt_nombre = QLineEdit()
-        limitar_campo(self.txt_nombre, 50, tipo="texto")
+        limitar_campo(self.txt_nombre, 30, tipo="texto")
 
         lbl_documento = QLabel("Documento")
         lbl_documento.setObjectName("campo_label")
@@ -49,7 +49,10 @@ class NuevoClienteView(QDialog):
         self.txt_clave.setEchoMode(QLineEdit.EchoMode.Password)
         limitar_campo(self.txt_clave, 10)
 
-        self.lbl_mensaje = QLabel("El documento no puede repetirse.")
+        self.lbl_mensaje = QLabel(
+            "El documento no puede repetirse. El cliente nuevo queda pendiente hasta que "
+            "el operario registre el pago adelantado."
+        )
         self.lbl_mensaje.setObjectName("campo_label")
         self.lbl_mensaje.setWordWrap(True)
         self.lbl_mensaje.setMinimumHeight(20)
@@ -138,7 +141,9 @@ class AgregarVehiculoView(QDialog):
         self.txt_color = QLineEdit()
         limitar_campo(self.txt_color, 20, tipo="texto")
 
-        self.lbl_mensaje = QLabel("La placa no puede repetirse.")
+        self.lbl_mensaje = QLabel(
+            "La placa no puede repetirse. El servicio del vehículo queda pendiente hasta el pago."
+        )
         self.lbl_mensaje.setObjectName("campo_label")
         self.lbl_mensaje.setWordWrap(True)
         self.lbl_mensaje.setMinimumHeight(20)
@@ -392,7 +397,7 @@ class ClientesVehiculosView(QDialog):
         lbl_nombre = QLabel("Nombre")
         lbl_nombre.setObjectName("campo_label")
         self.txt_nombre = QLineEdit()
-        limitar_campo(self.txt_nombre, 50, tipo="texto")
+        limitar_campo(self.txt_nombre, 30, tipo="texto")
 
         lbl_documento = QLabel("Documento")
         lbl_documento.setObjectName("campo_label")
@@ -444,13 +449,17 @@ class ClientesVehiculosView(QDialog):
         lbl_vehiculos_titulo.setStyleSheet("font-size: 16px;")
 
         self.tbl_vehiculos = QTableWidget()
-        self.tbl_vehiculos.setColumnCount(5)
-        self.tbl_vehiculos.setHorizontalHeaderLabels(["Placa", "Tipo", "Marca", "Color", "Estado"])
+        self.tbl_vehiculos.setColumnCount(7)
+        self.tbl_vehiculos.setHorizontalHeaderLabels(
+            ["Placa", "Tipo", "Marca", "Color", "Estado", "Pago", "Vigente hasta"]
+        )
         self.tbl_vehiculos.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.tbl_vehiculos.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self.tbl_vehiculos.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.tbl_vehiculos.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
         self.tbl_vehiculos.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        self.tbl_vehiculos.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        self.tbl_vehiculos.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeToContents)
         self.tbl_vehiculos.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tbl_vehiculos.setSelectionMode(QAbstractItemView.SingleSelection)
         self.tbl_vehiculos.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -575,12 +584,21 @@ class ClientesVehiculosView(QDialog):
         for row, v in enumerate(self._vehiculos_cliente):
             tipo_txt = "Vehículo" if v.tipo == TipoVehiculo.VEHICULO else "Moto"
             estado_txt = "Habilitado" if v.habilitado else "Inhabilitado"
+            estado_pago = v.estado_pago
+            pago_txt = estado_pago.estado if estado_pago else "Sin datos"
+            vigencia_txt = (
+                estado_pago.fecha_cubierta_hasta.strftime("%d/%m/%Y")
+                if estado_pago and estado_pago.fecha_cubierta_hasta
+                else "-"
+            )
 
             self.tbl_vehiculos.setItem(row, 0, QTableWidgetItem(v.placa))
             self.tbl_vehiculos.setItem(row, 1, QTableWidgetItem(tipo_txt))
             self.tbl_vehiculos.setItem(row, 2, QTableWidgetItem(v.marca))
             self.tbl_vehiculos.setItem(row, 3, QTableWidgetItem(v.color))
             self.tbl_vehiculos.setItem(row, 4, QTableWidgetItem(estado_txt))
+            self.tbl_vehiculos.setItem(row, 5, QTableWidgetItem(pago_txt))
+            self.tbl_vehiculos.setItem(row, 6, QTableWidgetItem(vigencia_txt))
 
         if self._vehiculos_cliente:
             self.tbl_vehiculos.selectRow(0)

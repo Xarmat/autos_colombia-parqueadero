@@ -1,0 +1,32 @@
+@startsalt
+skinparam backgroundColor #111827
+skinparam defaultFontColor #F9FAFB
+skinparam shadowing false
+{
+{^ <b>Autos Colombia - Gestión de pagos</b>}
+==
+<b>Registrar pago por vehículo</b>
+Placa | ^ABC123^
+Cliente | "Cliente de ejemplo"
+Estado de pago | Bloqueado - día 15 de 15
+Tarifa mensual | $[tarifa del vehículo]
+==
+<b>Periodo que se va a registrar</b>
+Motivo | ^Mensualidad inicial^Mensualidad anticipada^Pago atrasado^
+Inicio de mensualidad | "DD/MM/AAAA"
+Fin de mensualidad | Calculada automáticamente
+Continuidad después de este periodo | (*) Sí, pagar siguiente mes | () No, solicitar baja
+==
+<b>Detalle si se paga después del bloqueo</b>
+Prorrateo de gracia | Tarifa / días reales del ciclo x días cobrables
+Mensualidad siguiente | Tarifa completa, por adelantado
+Total a registrar | $[total calculado]
+==
+<b>Datos del pago</b>
+Fecha de pago | "DD/MM/AAAA"
+Medio | (*) Efectivo | () Código QR | () Recibo bancario
+Nota | El operario revisa el recibo bancario; no hay validación automática.
+==
+[ Registrar pago ] | [ Cancelar ]
+}
+@endsalt

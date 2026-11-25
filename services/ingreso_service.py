@@ -15,6 +15,7 @@ from models.entidades import Movimiento, Sesion, Vehiculo
 from repositories.celda_repository import CeldaRepository
 from repositories.movimiento_repository import MovimientoRepository
 from repositories.vehiculo_repository import VehiculoRepository
+from services.pago_service import PagoService
 from services.utilidades import normalizar_placa
 
 _MAX_REINTENTOS = 3
@@ -22,10 +23,11 @@ _MAX_REINTENTOS = 3
 
 class IngresoService:
     def __init__(self, vehiculos: VehiculoRepository, celdas: CeldaRepository,
-                 movimientos: MovimientoRepository):
+                 movimientos: MovimientoRepository, pagos: PagoService):
         self._vehiculos = vehiculos
         self._celdas = celdas
         self._movimientos = movimientos
+        self._pagos = pagos
 
     @staticmethod
     def _validar_habilitado(vehiculo: Vehiculo) -> None:
@@ -47,6 +49,7 @@ class IngresoService:
             if vehiculo is None:
                 raise VehiculoNoRegistrado(placa)
             self._validar_habilitado(vehiculo)
+            self._pagos.validar_ingreso(conn, placa)
             if self._movimientos.buscar_activo(conn, placa) is not None:
                 raise VehiculoYaDentro(placa)
             if self._celdas.contar_libres(conn, vehiculo.tipo) == 0:
@@ -67,6 +70,7 @@ class IngresoService:
                     if vehiculo is None:
                         raise VehiculoNoRegistrado(placa)
                     self._validar_habilitado(vehiculo)
+                    self._pagos.validar_ingreso(conn, placa)
                     if self._movimientos.buscar_activo(conn, placa) is not None:
                         raise VehiculoYaDentro(placa)
 

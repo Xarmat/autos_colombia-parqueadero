@@ -28,7 +28,6 @@ class SalidaView(QDialog):
         self.txt_placa.setPlaceholderText("Placa, por ejemplo ABC123")
         limitar_campo(self.txt_placa, 6, tipo="placa")
         self.btn_buscar = QPushButton("Buscar")
-        self.lbl_datos = QLabel("")
         self.lbl_mensaje = QLabel("")
         self.btn_confirmar = QPushButton("Confirmar salida")
         self.btn_confirmar.setEnabled(False)
@@ -42,7 +41,6 @@ class SalidaView(QDialog):
         layout = QVBoxLayout(self)
         layout.addWidget(titulo)
         layout.addLayout(fila_placa)
-        layout.addWidget(self.lbl_datos)
         layout.addWidget(self.lbl_mensaje)
         layout.addWidget(self.btn_confirmar)
         layout.addWidget(btn_cerrar)
@@ -61,21 +59,17 @@ class SalidaView(QDialog):
 
     def _reiniciar(self) -> None:
         self.btn_confirmar.setEnabled(False)
-        self.lbl_datos.setText("")
         mostrar_info(self.lbl_mensaje, "")
 
     def _buscar(self) -> None:
-        """Paso 1: busca el ingreso activo y muestra celda y hora."""
+        """Paso 1: verifica que el vehículo tenga un ingreso activo."""
         self._reiniciar()
         ok, movimiento = ejecutar(
             self.lbl_mensaje,
             lambda: self._servicio.consultar_movimiento_activo(self.txt_placa.text()))
         if not ok:
             return
-        self.lbl_datos.setText(
-            f"Celda: {movimiento.celda.codigo}\n"
-            f"Ingresó: {movimiento.fecha_ingreso:%d/%m/%Y %H:%M}")
-        mostrar_info(self.lbl_mensaje, "Confirma la salida del vehículo.")
+        mostrar_info(self.lbl_mensaje, "Se encontró un ingreso activo. Confirma la salida.")
         self.btn_confirmar.setEnabled(True)
 
     def _confirmar(self) -> None:
@@ -85,5 +79,4 @@ class SalidaView(QDialog):
             lambda: self._servicio.registrar_salida(self.txt_placa.text(), self._sesion))
         self.btn_confirmar.setEnabled(False)
         if ok:
-            mostrar_ok(self.lbl_mensaje,
-                       f"Salida registrada. La celda {movimiento.celda.codigo} quedó libre.")
+            mostrar_ok(self.lbl_mensaje, "Salida registrada.")

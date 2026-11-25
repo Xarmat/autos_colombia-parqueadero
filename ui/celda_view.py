@@ -17,10 +17,10 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QHBoxLayout, QLabel, QPlainTextEdit,
     QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
-    QLineEdit, QGridLayout, QFrame,
+    QLineEdit, QGridLayout, QFrame, QInputDialog, QMessageBox,
 )
 
-from models.entidades import Sesion
+from models.entidades import SesionAdministrador
 from models.enums import TipoVehiculo
 from repositories.celda_estado_repository import CeldaConEstado
 from services.celda_service import CeldaService
@@ -53,14 +53,35 @@ class _TarjetaCelda(QPushButton):
         "  background:#991b1b; border:2px solid #ef4444; color:#ffffff;"
         "}"
     )
+    _ESTILO_BLOQUEADA = (
+        "QPushButton{"
+        "  background:#292929; color:#d4d4d8; border:1px solid #666666;"
+        "  border-radius:6px; font-size:11px; font-weight:600; padding:2px;"
+        "}"
+        "QPushButton:checked{background:#444444; border:2px solid #a1a1aa;}"
+    )
 
     def __init__(self, celda: CeldaConEstado, parent=None):
         super().__init__(parent)
         self.celda = celda
         self.setCheckable(True)
         self.setFixedSize(72, 56)
-        self.setStyleSheet(self._ESTILO_LIBRE if celda.libre else self._ESTILO_OCUPADA)
-        texto = celda.codigo + "\n" + (celda.placa if celda.placa else "libre")
+        if celda.libre:
+            estilo = self._ESTILO_LIBRE
+        elif not celda.habilitada and celda.id_correccion is None:
+            estilo = self._ESTILO_BLOQUEADA
+        else:
+            estilo = self._ESTILO_OCUPADA
+        self.setStyleSheet(estilo)
+        if celda.placa:
+            estado = celda.placa
+        elif celda.id_correccion is not None:
+            estado = "Traslado pendiente"
+        elif not celda.habilitada:
+            estado = "Bloqueada"
+        else:
+            estado = "Libre"
+        texto = celda.codigo + "\n" + estado
         self.setText(texto)
         self.setCursor(Qt.PointingHandCursor)
 
@@ -74,7 +95,7 @@ class CorregirCeldaView(QDialog):
         self,
         celdas_ocupadas: List[CeldaConEstado],
         seleccionada: Optional[CeldaConEstado],
-        sesion: Sesion,
+        sesion: SesionAdministrador,
         servicio: CeldaService,
         parent=None,
     ):
@@ -220,13 +241,14 @@ class CorregirCeldaView(QDialog):
                 id_movimiento=celda_origen.id_movimiento,
                 id_celda_destino=celda_destino.id_celda,
                 motivo=motivo,
-                sesion=self._sesion,
+                id_administrador=self._sesion.administrador.id_administrador,
             ),
         )
         if ok:
             mostrar_ok(
                 self.lbl_mensaje,
-                f"Corrección aplicada: {celda_origen.placa} ahora está en la celda {celda_destino.codigo}.",
+                f"Destino {celda_destino.codigo} asignado. La celda anterior seguirá bloqueada "
+                "hasta confirmar el traslado.",
             )
             self.btn_aplicar.setEnabled(False)
 
@@ -236,7 +258,7 @@ class CorregirCeldaView(QDialog):
 class EstadoCeldasView(QDialog):
     """Vista principal del estado de las 80 celdas con filtros y corrección."""
 
-    def __init__(self, sesion: Sesion, servicio: CeldaService, parent=None):
+    def __init__(self, sesion: SesionAdministrador, servicio: CeldaService, parent=None):
         super().__init__(parent)
         self._sesion = sesion
         self._servicio = servicio
@@ -262,7 +284,7 @@ class EstadoCeldasView(QDialog):
         self.cmb_estado = QComboBox()
         self.cmb_estado.addItem("Todas", None)
         self.cmb_estado.addItem("Libres", True)
-        self.cmb_estado.addItem("Ocupadas", False)
+        self.cmb_estado.addItem("No disponibles", False)
         self.cmb_estado.setFixedWidth(170)
 
         self.btn_corregir = QPushButton("Corregir celda")
@@ -270,6 +292,12 @@ class EstadoCeldasView(QDialog):
         self.btn_corregir.setEnabled(False)
         self.btn_corregir.setFixedWidth(160)
         self.btn_corregir.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.btn_estado = QPushButton("Bloquear / habilitar")
+        self.btn_estado.setObjectName("secundario")
+        self.btn_estado.setEnabled(False)
+        self.btn_finalizar = QPushButton("Finalizar traslado")
+        self.btn_finalizar.setObjectName("secundario")
+        self.btn_finalizar.setEnabled(False)
 
         col_tipo = QVBoxLayout()
         col_tipo.setSpacing(2)
@@ -286,7 +314,11 @@ class EstadoCeldasView(QDialog):
         fila_filtros.addLayout(col_tipo)
         fila_filtros.addLayout(col_estado)
         fila_filtros.addStretch()
-        fila_filtros.addWidget(self.btn_corregir, alignment=Qt.AlignBottom)
+        fila_acciones = QHBoxLayout()
+        fila_acciones.addStretch()
+        fila_acciones.addWidget(self.btn_corregir)
+        fila_acciones.addWidget(self.btn_estado)
+        fila_acciones.addWidget(self.btn_finalizar)
 
         # ── Leyenda ──────────────────────────────────────────────────
         def _indicador(color: str, borde: str, texto: str) -> QHBoxLayout:
@@ -306,10 +338,13 @@ class EstadoCeldasView(QDialog):
         fila_leyenda = QHBoxLayout()
         fila_leyenda.setSpacing(24)
         fila_leyenda.addLayout(_indicador("#1a3a1a", "#166534", "Libre"))
-        fila_leyenda.addLayout(_indicador("#3a1a1a", "#991b1b", "Ocupada"))
+        fila_leyenda.addLayout(_indicador("#3a1a1a", "#991b1b", "Ocupada o traslado pendiente"))
+        fila_leyenda.addLayout(_indicador("#333333", "#666666", "Bloqueada"))
         fila_leyenda.addStretch()
 
-        self.lbl_resumen = QLabel("Celdas totales = 0 | Celdas disponibles = 0 | Celdas ocupadas = 0")
+        self.lbl_resumen = QLabel(
+            "Celdas totales = 0 | Celdas disponibles = 0 | Celdas ocupadas = 0 | Bloqueadas = 0"
+        )
         self.lbl_resumen.setStyleSheet("font-size: 14px; font-weight: 600; color: #d4d4d8;")
 
         # ── Área scrollable con la cuadrícula ────────────────────────
@@ -328,7 +363,8 @@ class EstadoCeldasView(QDialog):
 
         # ── Mensajes ─────────────────────────────────────────────────
         self.lbl_hint = QLabel(
-            "Seleccionar una celda ocupada y pulsar Corregir celda permite moverla a otra libre."
+            "El traslado conserva la celda anterior bloqueada hasta que el administrador "
+            "confirme que el vehículo fue movido."
         )
         self.lbl_hint.setObjectName("campo_label")
         self.lbl_hint.setWordWrap(True)
@@ -342,6 +378,7 @@ class EstadoCeldasView(QDialog):
         layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(8)
         layout.addLayout(fila_filtros)
+        layout.addLayout(fila_acciones)
         layout.addLayout(fila_leyenda)
         layout.addWidget(self.lbl_resumen)
         layout.addWidget(scroll, 1)
@@ -352,6 +389,8 @@ class EstadoCeldasView(QDialog):
         self.cmb_tipo.currentIndexChanged.connect(self._refrescar)
         self.cmb_estado.currentIndexChanged.connect(self._refrescar)
         self.btn_corregir.clicked.connect(self._abrir_correccion)
+        self.btn_estado.clicked.connect(self._cambiar_estado)
+        self.btn_finalizar.clicked.connect(self._finalizar_traslado)
 
         self._refrescar()
 
@@ -371,14 +410,18 @@ class EstadoCeldasView(QDialog):
 
         self._celdas = celdas or []
         disponibles = sum(1 for celda in self._celdas if celda.libre)
-        ocupadas = len(self._celdas) - disponibles
+        ocupadas = sum(1 for celda in self._celdas if celda.id_movimiento is not None)
+        bloqueadas = len(self._celdas) - disponibles - ocupadas
         self.lbl_resumen.setText(
             f"Celdas totales = {len(self._celdas)} "
             f"| Celdas disponibles = {disponibles} "
-            f"| Celdas ocupadas = {ocupadas}"
+            f"| Celdas ocupadas = {ocupadas} "
+            f"| Bloqueadas / en traslado = {bloqueadas}"
         )
         self._seleccionada = None
         self.btn_corregir.setEnabled(False)
+        self.btn_estado.setEnabled(False)
+        self.btn_finalizar.setEnabled(False)
         self._dibujar_cuadricula()
 
     def _dibujar_cuadricula(self) -> None:
@@ -439,15 +482,22 @@ class EstadoCeldasView(QDialog):
 
         if tarjeta.isChecked():
             self._seleccionada = tarjeta.celda
-            # Solo habilitar corrección si la celda está ocupada
-            self.btn_corregir.setEnabled(not tarjeta.celda.libre)
+            self.btn_corregir.setEnabled(tarjeta.celda.id_movimiento is not None)
+            self.btn_estado.setEnabled(tarjeta.celda.id_correccion is None)
+            self.btn_finalizar.setEnabled(tarjeta.celda.id_correccion is not None)
             if tarjeta.celda.libre:
-                mostrar_info(self.lbl_mensaje, "Solo puedes corregir celdas ocupadas.")
+                mostrar_info(self.lbl_mensaje, "Celda libre; puedes bloquearla si es necesario.")
+            elif tarjeta.celda.id_correccion is not None:
+                mostrar_info(self.lbl_mensaje, "La celda anterior está bloqueada hasta finalizar el traslado.")
+            elif tarjeta.celda.id_movimiento is None and not tarjeta.celda.habilitada:
+                mostrar_info(self.lbl_mensaje, tarjeta.celda.motivo_bloqueo or "Celda bloqueada.")
             else:
                 mostrar_info(self.lbl_mensaje, "")
         else:
             self._seleccionada = None
             self.btn_corregir.setEnabled(False)
+            self.btn_estado.setEnabled(False)
+            self.btn_finalizar.setEnabled(False)
             mostrar_info(self.lbl_mensaje, "")
 
     def _abrir_correccion(self) -> None:
@@ -459,6 +509,7 @@ class EstadoCeldasView(QDialog):
         )
         if not ok:
             return
+        todas = [celda for celda in todas if celda.id_movimiento is not None]
         if not todas:
             mostrar_info(self.lbl_mensaje, "No hay celdas ocupadas en este momento.")
             return
@@ -467,3 +518,47 @@ class EstadoCeldasView(QDialog):
         dlg.exec()
         # Siempre refrescar al cerrar por si cambió algo
         self._refrescar()
+
+    def _cambiar_estado(self) -> None:
+        celda = self._seleccionada
+        if celda is None or celda.id_correccion is not None:
+            return
+        habilitar = not celda.habilitada
+        motivo = ""
+        if not habilitar:
+            motivo, aceptado = QInputDialog.getText(
+                self, "Bloquear celda", f"Motivo para bloquear {celda.codigo}:"
+            )
+            if not aceptado:
+                return
+        ok, _ = ejecutar(
+            self.lbl_mensaje,
+            lambda: self._servicio.cambiar_estado_celda(
+                celda.id_celda, habilitar, motivo
+            ),
+        )
+        if ok:
+            mostrar_ok(
+                self.lbl_mensaje,
+                f"Celda {celda.codigo} {'habilitada' if habilitar else 'bloqueada'}.",
+            )
+            self._refrescar()
+
+    def _finalizar_traslado(self) -> None:
+        celda = self._seleccionada
+        if celda is None or celda.id_correccion is None:
+            return
+        respuesta = QMessageBox.question(
+            self,
+            "Finalizar traslado",
+            f"¿Confirmas que el vehículo ya salió de la celda {celda.codigo}?",
+        )
+        if respuesta != QMessageBox.StandardButton.Yes:
+            return
+        ok, _ = ejecutar(
+            self.lbl_mensaje,
+            lambda: self._servicio.finalizar_traslado(celda.id_correccion),
+        )
+        if ok:
+            mostrar_ok(self.lbl_mensaje, f"La celda {celda.codigo} quedó disponible.")
+            self._refrescar()

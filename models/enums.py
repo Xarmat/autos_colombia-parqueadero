@@ -16,3 +16,19 @@ class TipoVehiculo(str, Enum):
 class Turno(str, Enum):
     DIA = "DIA"
     NOCHE = "NOCHE"
+
+
+class MedioPago(str, Enum):
+    EFECTIVO = "EFECTIVO"
+    QR = "QR"
+    RECIBO_BANCARIO = "RECIBO_BANCARIO"
+
+
+class ConceptoPago(str, Enum):
+    MENSUALIDAD = "MENSUALIDAD"
+    PRORRATEO = "PRORRATEO"
+
+
+class TipoSolicitudCliente(str, Enum):
+    CONTINUAR = "CONTINUAR"
+    BAJA = "BAJA"

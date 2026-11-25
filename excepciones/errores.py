@@ -74,7 +74,7 @@ class TipoVehiculoDentro(ParqueaderoError):
 
 class ClienteInhabilitado(ParqueaderoError):
     def __init__(self):
-        super().__init__("Tu cuenta está inhabilitada. Habla con el operario.")
+        super().__init__("Tu cuenta está inhabilitada. Habla con el administrador.")
 
 
 class VehiculoDentro(ParqueaderoError):
@@ -87,8 +87,56 @@ class VehiculoInhabilitado(ParqueaderoError):
         super().__init__(f"El vehículo {placa} está inhabilitado, no puede ingresar.")
 
 
+class PagoPendiente(ParqueaderoError):
+    def __init__(self, placa: str, dias_mora: int = 0, bloqueado: bool = True):
+        if dias_mora:
+            super().__init__(
+                f"El vehículo {placa} tiene {dias_mora} día(s) de mora. "
+                + ("Registra el pago para permitir el ingreso."
+                   if bloqueado else "Debe registrar el pago antes del día 15 de mora.")
+            )
+        else:
+            super().__init__(
+                f"El vehículo {placa} no tiene una mensualidad pagada. "
+                "Registra el pago adelantado para habilitar el servicio."
+            )
+
+
+class ServicioAunNoInicia(ParqueaderoError):
+    def __init__(self, placa: str, fecha_inicio: str):
+        super().__init__(
+            f"La mensualidad del vehículo {placa} inicia el {fecha_inicio}; "
+            "no puede ingresar antes de esa fecha."
+        )
+
+
+class SolicitudYaExiste(ParqueaderoError):
+    def __init__(self):
+        super().__init__("Ya tienes una solicitud pendiente de este tipo.")
+
+
 class CeldaOcupada(ParqueaderoError):
     """Uso interno: otra puerta tomó la misma celda en el mismo instante.
 
     IngresoService la captura y reintenta con otra celda; el operario no la ve.
     """
+
+
+class UsuarioYaExiste(ParqueaderoError):
+    def __init__(self, usuario: str):
+        super().__init__(f"El usuario {usuario} ya está registrado.")
+
+
+class OperarioNoDisponible(ParqueaderoError):
+    def __init__(self, turno: str):
+        super().__init__(f"Ya están cubiertos los puestos del turno {turno}. Selecciona a quién reemplazar.")
+
+
+class UltimoAdministrador(ParqueaderoError):
+    def __init__(self):
+        super().__init__("Debe permanecer al menos una cuenta de administrador habilitada.")
+
+
+class SolicitudNoDisponible(ParqueaderoError):
+    def __init__(self, mensaje: str):
+        super().__init__(mensaje)
